@@ -1,0 +1,28 @@
+{
+  "name": "telix-dev",
+  "version": "0.1.0",
+  "description": "Community phonebook for the terminal internet",
+  "main": "backend/server.js",
+  "scripts": {
+    "start": "node backend/server.js",
+    "dev": "node --watch backend/server.js",
+    "seed": "node backend/db/seed.js",
+    "check": "node backend/jobs/status-checker.js --once",
+    "test": "node --test test/"
+  },
+  "keywords": [
+    "terminal",
+    "bbs",
+    "mud",
+    "retro",
+    "phonebook"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "better-sqlite3": "^11.0.0",
+    "dotenv": "^16.4.0",
+    "express": "^4.21.0",
+    "node-cron": "^3.0.3",
+    "ws": "^8.19.0"
+  }
+}

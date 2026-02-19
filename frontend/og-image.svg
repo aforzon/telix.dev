@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <rect fill="#0000AA" width="1200" height="630"/>
+  <rect fill="#AAAAAA" x="0" y="0" width="1200" height="28"/>
+  <text x="10" y="20" font-family="Courier New, monospace" font-size="18" font-weight="bold" fill="#0000AA"> TELIX.DEV - The Terminal Internet </text>
+  <rect fill="#AAAAAA" x="0" y="602" width="1200" height="28"/>
+  <text x="10" y="622" font-family="Courier New, monospace" font-size="16" fill="#0000AA">?-Help  R-Refresh  /-Search  !-Random</text>
+  <text x="600" y="180" font-family="Courier New, monospace" font-size="72" font-weight="bold" fill="#FFFF55" text-anchor="middle">TELIX.DEV</text>
+  <text x="600" y="240" font-family="Courier New, monospace" font-size="28" fill="#55FFFF" text-anchor="middle">The Terminal Internet</text>
+  <text x="600" y="310" font-family="Courier New, monospace" font-size="20" fill="#AAAAAA" text-anchor="middle">A community-curated directory of BBSes, MUDs,</text>
+  <text x="600" y="340" font-family="Courier New, monospace" font-size="20" fill="#AAAAAA" text-anchor="middle">Gopher holes, and the weird wonderful corners</text>
+  <text x="600" y="370" font-family="Courier New, monospace" font-size="20" fill="#AAAAAA" text-anchor="middle">of the internet most people never see.</text>
+  <text x="600" y="430" font-family="Courier New, monospace" font-size="22" fill="#55FF55" text-anchor="middle">Connect directly from your browser.</text>
+  <text x="200" y="510" font-family="Courier New, monospace" font-size="16" fill="#55FF55">*</text>
+  <text x="220" y="510" font-family="Courier New, monospace" font-size="16" fill="#FFFFFF">Synchronet BBS</text>
+  <text x="500" y="510" font-family="Courier New, monospace" font-size="16" fill="#AAAAAA">telnet</text>
+  <text x="700" y="510" font-family="Courier New, monospace" font-size="16" fill="#AAAAAA">BBS</text>
+  <text x="200" y="535" font-family="Courier New, monospace" font-size="16" fill="#55FF55">*</text>
+  <text x="220" y="535" font-family="Courier New, monospace" font-size="16" fill="#00AAAA" font-weight="bold">Aardwolf MUD</text>
+  <text x="500" y="535" font-family="Courier New, monospace" font-size="16" fill="#00AAAA">telnet</text>
+  <text x="700" y="535" font-family="Courier New, monospace" font-size="16" fill="#00AAAA">MUD</text>
+  <text x="200" y="560" font-family="Courier New, monospace" font-size="16" fill="#55FF55">*</text>
+  <text x="220" y="560" font-family="Courier New, monospace" font-size="16" fill="#FFFFFF">Telehack</text>
+  <text x="500" y="560" font-family="Courier New, monospace" font-size="16" fill="#AAAAAA">telnet</text>
+  <text x="700" y="560" font-family="Courier New, monospace" font-size="16" fill="#AAAAAA">Game</text>
+</svg>

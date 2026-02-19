@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <title>Telix.dev — The Terminal Internet</title>
+  <meta name="description" content="A community-curated directory of BBSes, MUDs, ASCII art servers, network tools, and the weird wonderful corners of the connected world.">
+  <meta property="og:title" content="Telix.dev — The Terminal Internet">
+  <meta property="og:description" content="Yellow Pages for the terminal-curious internet. BBSes, MUDs, Gopher holes, and more.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://telix.dev">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Telix.dev — The Terminal Internet">
+  <meta name="twitter:description" content="Yellow Pages for the terminal-curious internet.">
+  <meta name="theme-color" content="#0000AA">
+  <meta name="robots" content="index, follow">
+  <meta name="author" content="Telix.dev">
+  <meta name="keywords" content="BBS, MUD, telnet, terminal, gopher, gemini, retro, phonebook, directory, ASCII, IRC">
+  <meta property="og:site_name" content="Telix.dev">
+  <meta property="og:image" content="https://telix.dev/og-image.svg">
+  <meta property="og:image:type" content="image/svg+xml">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:locale" content="en_US">
+  <meta name="twitter:image" content="https://telix.dev/og-image.svg">
+  <link rel="canonical" href="https://telix.dev">
+  <link rel="icon" href="/favicon.ico" sizes="32x32">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2016%2016'%3E%3Crect%20fill='%230000AA'%20width='16'%20height='16'/%3E%3Ctext%20y='13'%20x='2'%20font-size='12'%20fill='%23FFFF55'%20font-family='monospace'%20font-weight='bold'%3ET%3C/text%3E%3C/svg%3E" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <meta name="turnstile-site-key" content="0x4AAAAAACe-Y3QpXUufAatR">
+  <link rel="stylesheet" href="/css/terminal.css?v=19">
+  <link rel="stylesheet" href="/vendor/xterm/xterm.min.css">
+
+  <!-- Structured Data -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": "Telix.dev",
+    "url": "https://telix.dev",
+    "description": "A community-curated directory of BBSes, MUDs, ASCII art servers, network tools, and the weird wonderful corners of the connected world.",
+    "potentialAction": {
+      "@type": "SearchAction",
+      "target": "https://telix.dev/?search={search_term_string}",
+      "query-input": "required name=search_term_string"
+    }
+  }
+  </script>
+
+  <!-- Google Analytics -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-705ZS1PML4"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-705ZS1PML4');
+  </script>
+</head>
+<body>
+  <a href="#phonebook-list" class="skip-link">Skip to phonebook</a>
+  <div id="app" role="application" aria-label="Telix.dev Phonebook">
+    <header id="title-bar"></header>
+    <main id="main" aria-label="Phonebook directory">
+      <nav id="controls-bar" aria-label="Filter and search entries"></nav>
+      <div id="phonebook-header" aria-hidden="true"></div>
+      <div id="phonebook-list" role="listbox" aria-label="Phonebook entries" tabindex="0"></div>
+      <div id="pagination" role="status" aria-live="polite"></div>
+    </main>
+    <footer id="status-bar" aria-label="Keyboard shortcuts"></footer>
+  </div>
+
+  <script data-cfasync="false" src="/vendor/xterm/xterm.min.js"></script>
+  <script data-cfasync="false" src="/vendor/xterm/addon-fit.min.js"></script>
+  <script data-cfasync="false" src="/js/app.js?v=19"></script>
+  <script data-cfasync="false" src="/js/phonebook.js?v=19"></script>
+  <script data-cfasync="false" src="/js/detail.js?v=19"></script>
+  <script data-cfasync="false" src="/js/terminal.js?v=19"></script>
+</body>
+</html>
