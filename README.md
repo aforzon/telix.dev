@@ -55,6 +55,23 @@ npm start           # http://localhost:3000
 
 Requires Node.js 18+. Database auto-creates on first run. No build step.
 
+### Production deploy
+
+```bash
+# Nginx + Cloudflare Origin cert
+mkdir -p /etc/ssl/telix.dev
+# Download origin cert from Cloudflare Dashboard → SSL/TLS → Origin Server
+cp nginx/telix-ratelimit.conf /etc/nginx/conf.d/
+cp nginx/telix.dev /etc/nginx/sites-available/
+ln -sf /etc/nginx/sites-available/telix.dev /etc/nginx/sites-enabled/
+nginx -t && systemctl reload nginx
+
+# Process manager
+npm install -g pm2
+pm2 start backend/server.js --name telix-dev
+pm2 save && pm2 startup
+```
+
 ## Tech stack
 
 Vanilla HTML/CSS/JS. Node.js + Express. SQLite. xterm.js. That's it.
