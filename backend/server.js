@@ -7,6 +7,7 @@ const db = require('./db');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+app.disable('x-powered-by');
 app.set('trust proxy', 'loopback');
 app.use(express.json({ limit: '10kb' }));
 
