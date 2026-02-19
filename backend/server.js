@@ -89,15 +89,45 @@ app.use('/api/check', checkLimit, require('./routes/check'));
 const crypto = require('crypto');
 const adminLimit = createLimiter('admin', 60_000, 10);
 
-app.get('/api/admin/sessions', adminLimit, (req, res) => {
+function adminAuth(req, res, next) {
   const key = req.headers['x-admin-key'];
   const expected = process.env.ADMIN_KEY;
   if (!key || !expected || key.length !== expected.length
       || !crypto.timingSafeEqual(Buffer.from(key), Buffer.from(expected))) {
     return res.status(403).json({ error: 'Forbidden' });
   }
+  next();
+}
+
+app.get('/api/admin/sessions', adminLimit, adminAuth, (req, res) => {
   const { getSessions } = require('./routes/terminal');
   res.json({ sessions: getSessions() });
+});
+
+// Moderation: list pending entries
+app.get('/api/admin/pending', adminLimit, adminAuth, (req, res) => {
+  const entries = db.prepare(
+    `SELECT id, name, host, port, protocol, description, category, tags, submitted_by, submitted_at, status, response_time, url
+     FROM entries WHERE moderation_status = 'pending' ORDER BY submitted_at DESC`
+  ).all();
+  res.json({ entries, count: entries.length });
+});
+
+// Moderation: approve an entry
+app.post('/api/admin/approve/:id', adminLimit, adminAuth, (req, res) => {
+  const entry = db.prepare('SELECT id, moderation_status FROM entries WHERE id = ?').get(parseInt(req.params.id));
+  if (!entry) return res.status(404).json({ error: 'Entry not found' });
+  if (entry.moderation_status === 'approved') return res.json({ ok: true, message: 'Already approved' });
+  db.prepare("UPDATE entries SET moderation_status = 'approved' WHERE id = ?").run(entry.id);
+  res.json({ ok: true, message: 'Entry approved' });
+});
+
+// Moderation: reject an entry
+app.post('/api/admin/reject/:id', adminLimit, adminAuth, (req, res) => {
+  const entry = db.prepare('SELECT id FROM entries WHERE id = ?').get(parseInt(req.params.id));
+  if (!entry) return res.status(404).json({ error: 'Entry not found' });
+  db.prepare("UPDATE entries SET moderation_status = 'rejected' WHERE id = ?").run(entry.id);
+  res.json({ ok: true, message: 'Entry rejected' });
 });
 
 // Dynamic sitemap

@@ -12,7 +12,7 @@ const PAGE_SIZE = 50;
 router.get('/random', (req, res) => {
   const entry = db.prepare(
     `SELECT id, name, host, port, protocol, description, category, tags, upvotes, last_checked, status, response_time, url
-     FROM entries WHERE flagged < 5 AND status = 'online' ORDER BY RANDOM() LIMIT 1`
+     FROM entries WHERE flagged < 5 AND status = 'online' AND moderation_status = 'approved' ORDER BY RANDOM() LIMIT 1`
   ).get();
   if (!entry) return res.status(404).json({ error: 'No entries found' });
   res.json(entry);
@@ -21,11 +21,11 @@ router.get('/random', (req, res) => {
 // GET /api/entries/stats — category counts for landing page
 router.get('/stats', (req, res) => {
   const rows = db.prepare(
-    `SELECT category, COUNT(*) as count FROM entries WHERE flagged < 5 AND status != 'offline' GROUP BY category ORDER BY count DESC`
+    `SELECT category, COUNT(*) as count FROM entries WHERE flagged < 5 AND status != 'offline' AND moderation_status = 'approved' GROUP BY category ORDER BY count DESC`
   ).all();
   const total = rows.reduce((sum, r) => sum + r.count, 0);
   const onlineRow = db.prepare(
-    `SELECT COUNT(*) as count FROM entries WHERE flagged < 5 AND status = 'online'`
+    `SELECT COUNT(*) as count FROM entries WHERE flagged < 5 AND status = 'online' AND moderation_status = 'approved'`
   ).get();
   res.json({ categories: rows, total, online: onlineRow.count });
 });
@@ -34,7 +34,7 @@ router.get('/stats', (req, res) => {
 router.get('/', (req, res) => {
   const { category, protocol, status, sort, search, page } = req.query;
 
-  let where = ['flagged < 5'];
+  let where = ['flagged < 5', "moderation_status = 'approved'"];
   const params = {};
 
   // Hide offline entries unless explicitly requested
@@ -88,7 +88,7 @@ router.get('/:id', (req, res) => {
   const entry = db.prepare(
     `SELECT id, name, host, port, protocol, description, long_desc, category, tags,
      submitted_by, submitted_at, upvotes, last_checked, status, response_time, country, url
-     FROM entries WHERE id = ? AND flagged < 5`
+     FROM entries WHERE id = ? AND flagged < 5 AND moderation_status = 'approved'`
   ).get(parseInt(req.params.id));
   if (!entry) return res.status(404).json({ error: 'Entry not found' });
   res.json(entry);
@@ -96,9 +96,10 @@ router.get('/:id', (req, res) => {
 
 // POST /api/entries — submit a new entry
 const verifyTurnstile = require('../middleware/turnstile');
+const { checkHost } = require('../jobs/status-checker');
 const submitTracker = new Map(); // ip -> timestamp of last submission
 
-router.post('/', verifyTurnstile, (req, res) => {
+router.post('/', verifyTurnstile, async (req, res) => {
   // Rate limit: 1 submission per IP per 5 minutes
   const now = Date.now();
   const ip = req._realIP || req.ip;
@@ -126,6 +127,12 @@ router.post('/', verifyTurnstile, (req, res) => {
   const existing = db.prepare('SELECT id FROM entries WHERE host = ? AND port = ?').get(host.trim(), parseInt(port));
   if (existing) return res.status(409).json({ error: 'An entry for this host:port already exists' });
 
+  // Auto-ping: verify host is reachable before accepting
+  const pingResult = await checkHost(host.trim(), parseInt(port));
+  if (pingResult.status !== 'online') {
+    return res.status(400).json({ error: 'Host is not responding. Only live services can be submitted.' });
+  }
+
   // Parse tags
   let tagArr = [];
   if (tags && typeof tags === 'string') {
@@ -133,16 +140,17 @@ router.post('/', verifyTurnstile, (req, res) => {
   }
 
   const result = db.prepare(
-    `INSERT INTO entries (name, host, port, protocol, description, category, tags, url, submitted_by, submitted_by_ip, status)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'community', ?, 'unknown')`
+    `INSERT INTO entries (name, host, port, protocol, description, category, tags, url, submitted_by, submitted_by_ip, status, response_time, last_checked, moderation_status)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'community', ?, 'online', ?, datetime('now'), 'pending')`
   ).run(
     name.trim(), host.trim(), parseInt(port), protocol,
     description.trim(), category, JSON.stringify(tagArr),
-    url && url.trim() ? url.trim() : null, ip
+    url && url.trim() ? url.trim() : null, ip,
+    pingResult.response_time
   );
 
   submitTracker.set(ip, now);
-  res.json({ ok: true, id: result.lastInsertRowid });
+  res.json({ ok: true, id: result.lastInsertRowid, message: 'Submitted! Your entry is pending review.' });
 });
 
 // POST /api/entries/:id/flag (one flag per IP per entry)

@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS entries (
     url TEXT,
     submitted_by_ip TEXT,
     flagged INTEGER DEFAULT 0,
+    moderation_status TEXT DEFAULT 'approved',  -- pending|approved|rejected
     UNIQUE(host, port)
 );
 
@@ -33,3 +34,4 @@ CREATE TABLE IF NOT EXISTS votes (
 CREATE INDEX IF NOT EXISTS idx_entries_category ON entries(category);
 CREATE INDEX IF NOT EXISTS idx_entries_status ON entries(status);
 CREATE INDEX IF NOT EXISTS idx_entries_upvotes ON entries(upvotes DESC);
+CREATE INDEX IF NOT EXISTS idx_entries_moderation ON entries(moderation_status);
