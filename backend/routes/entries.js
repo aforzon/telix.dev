@@ -1,5 +1,6 @@
 const express = require('express');
 const db = require('../db');
+const { isBlockedHostname } = require('../lib/validate-host');
 const router = express.Router();
 
 const VALID_PROTOCOLS = ['telnet', 'ssh', 'http', 'https', 'raw', 'gopher', 'gemini', 'finger'];
@@ -85,8 +86,10 @@ router.get('/', (req, res) => {
 // GET /api/entries/:id — single entry
 router.get('/:id', (req, res) => {
   const entry = db.prepare(
-    'SELECT * FROM entries WHERE id = ? AND flagged = 0'
-  ).get(req.params.id);
+    `SELECT id, name, host, port, protocol, description, long_desc, category, tags,
+     submitted_by, submitted_at, upvotes, last_checked, status, response_time, country, url
+     FROM entries WHERE id = ? AND flagged < 5`
+  ).get(parseInt(req.params.id));
   if (!entry) return res.status(404).json({ error: 'Entry not found' });
   res.json(entry);
 });
@@ -98,7 +101,8 @@ const submitTracker = new Map(); // ip -> timestamp of last submission
 router.post('/', verifyTurnstile, (req, res) => {
   // Rate limit: 1 submission per IP per 5 minutes
   const now = Date.now();
-  const lastSubmit = submitTracker.get(req.ip);
+  const ip = req._realIP || req.ip;
+  const lastSubmit = submitTracker.get(ip);
   if (lastSubmit && now - lastSubmit < 300_000) {
     return res.status(429).json({ error: 'Please wait a few minutes before submitting again.' });
   }
@@ -115,6 +119,8 @@ router.post('/', verifyTurnstile, (req, res) => {
   if (!category || !VALID_CATEGORIES.includes(category)) return res.status(400).json({ error: 'Valid category is required' });
   if (name.trim().length > 64) return res.status(400).json({ error: 'Name must be 64 characters or less' });
   if (host.trim().length > 128) return res.status(400).json({ error: 'Host must be 128 characters or less' });
+  if (isBlockedHostname(host.trim())) return res.status(400).json({ error: 'This host is not allowed' });
+  if (url && url.trim() && !/^https?:\/\//i.test(url.trim())) return res.status(400).json({ error: 'URL must start with http:// or https://' });
 
   // Check for duplicate
   const existing = db.prepare('SELECT id FROM entries WHERE host = ? AND port = ?').get(host.trim(), parseInt(port));
@@ -132,10 +138,10 @@ router.post('/', verifyTurnstile, (req, res) => {
   ).run(
     name.trim(), host.trim(), parseInt(port), protocol,
     description.trim(), category, JSON.stringify(tagArr),
-    url ? url.trim() : null, req.ip
+    url && url.trim() ? url.trim() : null, ip
   );
 
-  submitTracker.set(req.ip, now);
+  submitTracker.set(ip, now);
   res.json({ ok: true, id: result.lastInsertRowid });
 });
 
@@ -146,7 +152,7 @@ router.post('/:id/flag', (req, res) => {
   const entry = db.prepare('SELECT id FROM entries WHERE id = ?').get(req.params.id);
   if (!entry) return res.status(404).json({ error: 'Entry not found' });
 
-  const flagKey = req.ip + ':' + req.params.id;
+  const flagKey = (req._realIP || req.ip) + ':' + req.params.id;
   if (flagTracker.has(flagKey)) {
     return res.status(409).json({ error: 'Already flagged' });
   }

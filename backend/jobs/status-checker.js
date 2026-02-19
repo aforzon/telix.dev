@@ -1,10 +1,19 @@
 const net = require('net');
+const { resolveAndValidate } = require('../lib/validate-host');
 
 let db;
 try { db = require('../db'); } catch { /* loaded standalone */ }
 
 function checkHost(host, port, timeout = 5000) {
-  return new Promise((resolve) => {
+  return new Promise(async (resolve) => {
+    // SSRF protection: validate host before connecting
+    let resolvedIP;
+    try {
+      resolvedIP = await resolveAndValidate(host);
+    } catch {
+      return resolve({ status: 'offline', response_time: null });
+    }
+
     const start = Date.now();
     const socket = new net.Socket();
 
@@ -26,7 +35,7 @@ function checkHost(host, port, timeout = 5000) {
       resolve({ status: 'offline', response_time: null });
     });
 
-    socket.connect(port, host);
+    socket.connect(port, resolvedIP);
   });
 }
 

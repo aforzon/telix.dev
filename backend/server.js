@@ -7,15 +7,25 @@ const db = require('./db');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.set('trust proxy', true);
-app.use(express.json());
+app.set('trust proxy', 'loopback');
+app.use(express.json({ limit: '10kb' }));
+
+// Prefer Cloudflare's CF-Connecting-IP header for real client IP
+app.use((req, res, next) => {
+  if (req.headers['cf-connecting-ip']) {
+    req._realIP = req.headers['cf-connecting-ip'];
+  } else {
+    req._realIP = req.ip;
+  }
+  next();
+});
 
 // In-memory rate limiter — tiered by action type
 const rateBuckets = new Map();
 
 function createLimiter(name, windowMs, max) {
   return (req, res, next) => {
-    const key = name + ':' + req.ip;
+    const key = name + ':' + (req._realIP || req.ip);
     const now = Date.now();
     let record = rateBuckets.get(key);
     if (!record || now - record.start > windowMs) {
@@ -44,6 +54,23 @@ setInterval(() => {
   }
 }, 300_000);
 
+// Security headers
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Content-Security-Policy',
+    "default-src 'self'; " +
+    "script-src 'self' https://www.googletagmanager.com https://challenges.cloudflare.com 'unsafe-inline'; " +
+    "style-src 'self' 'unsafe-inline'; " +
+    "connect-src 'self' wss: https://www.google-analytics.com https://challenges.cloudflare.com; " +
+    "font-src 'self'; " +
+    "img-src 'self' data:; " +
+    "frame-src https://challenges.cloudflare.com;"
+  );
+  next();
+});
+
 app.use(express.static(path.join(__dirname, '..', 'frontend')));
 
 // Global rate limit on all API routes
@@ -57,10 +84,15 @@ app.use('/api/entries', (req, res, next) => {
 app.use('/api/votes', writeLimit, require('./routes/votes'));
 app.use('/api/check', checkLimit, require('./routes/check'));
 
-// Admin: view active terminal sessions
-app.get('/api/admin/sessions', (req, res) => {
-  const key = req.query.key || req.headers['x-admin-key'];
-  if (key !== process.env.ADMIN_KEY) {
+// Admin: view active terminal sessions (header auth only, timing-safe)
+const crypto = require('crypto');
+const adminLimit = createLimiter('admin', 60_000, 10);
+
+app.get('/api/admin/sessions', adminLimit, (req, res) => {
+  const key = req.headers['x-admin-key'];
+  const expected = process.env.ADMIN_KEY;
+  if (!key || !expected || key.length !== expected.length
+      || !crypto.timingSafeEqual(Buffer.from(key), Buffer.from(expected))) {
     return res.status(403).json({ error: 'Forbidden' });
   }
   const { getSessions } = require('./routes/terminal');

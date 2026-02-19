@@ -2,6 +2,7 @@
 const WebSocket = require('ws');
 const net = require('net');
 const db = require('../db');
+const { resolveAndValidate } = require('../lib/validate-host');
 
 const MAX_PER_IP = 1;
 const IDLE_TIMEOUT = 2 * 60 * 1000;   // 2 minutes
@@ -29,7 +30,7 @@ function attach(server) {
   wss.on('connection', (ws, request) => {
     const params = new URL(request.url, 'http://localhost').searchParams;
     const entryId = parseInt(params.get('id'));
-    const ip = request.headers['x-forwarded-for']?.split(',')[0]?.trim()
+    const ip = request.headers['cf-connecting-ip']
       || request.socket.remoteAddress;
 
     // Connection limit per IP
@@ -149,7 +150,13 @@ function attach(server) {
       }
     });
 
-    remote.connect(entry.port, entry.host);
+    // SSRF protection: resolve and validate before connecting
+    resolveAndValidate(entry.host).then((resolvedIP) => {
+      remote.connect(entry.port, resolvedIP);
+    }).catch((err) => {
+      ws.close(4403, 'Connection to this host is not allowed');
+      cleanup(err.message);
+    });
   });
 
   console.log('WebSocket terminal proxy ready');
