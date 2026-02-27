@@ -22,7 +22,7 @@ var TerminalView = {
     overlay.innerHTML =
       '<div id="terminal-panel">' +
         '<div id="terminal-title-bar">' +
-          '<span class="terminal-title-text">' + App.esc(entry.name) + ' - ' + App.esc(entry.host) + ':' + entry.port + '</span>' +
+          '<span class="terminal-title-text">' + App.esc(entry.name) + ' - ' + App.esc(entry.host) + ':' + App.esc(String(entry.port)) + '</span>' +
           '<span id="terminal-timer" class="terminal-timer"></span>' +
           '<button id="terminal-close" class="btn">Disconnect</button>' +
         '</div>' +

@@ -11,22 +11,12 @@ app.disable('x-powered-by');
 app.set('trust proxy', 'loopback');
 app.use(express.json({ limit: '10kb' }));
 
-// Prefer Cloudflare's CF-Connecting-IP header for real client IP
-app.use((req, res, next) => {
-  if (req.headers['cf-connecting-ip']) {
-    req._realIP = req.headers['cf-connecting-ip'];
-  } else {
-    req._realIP = req.ip;
-  }
-  next();
-});
-
 // In-memory rate limiter — tiered by action type
 const rateBuckets = new Map();
 
 function createLimiter(name, windowMs, max) {
   return (req, res, next) => {
-    const key = name + ':' + (req._realIP || req.ip);
+    const key = name + ':' + req.ip;
     const now = Date.now();
     let record = rateBuckets.get(key);
     if (!record || now - record.start > windowMs) {
@@ -35,6 +25,7 @@ function createLimiter(name, windowMs, max) {
     }
     record.count++;
     if (record.count > max) {
+      console.warn(`[rate-limit] ${name} exceeded by ${req.ip} on ${req.method} ${req.originalUrl}`);
       return res.status(429).json({ error: 'Too many requests. Try again later.' });
     }
     next();
@@ -94,6 +85,7 @@ function adminAuth(req, res, next) {
   const expected = process.env.ADMIN_KEY;
   if (!key || !expected || key.length !== expected.length
       || !crypto.timingSafeEqual(Buffer.from(key), Buffer.from(expected))) {
+    console.warn(`[auth] Failed admin auth from ${req.ip}`);
     return res.status(403).json({ error: 'Forbidden' });
   }
   next();
@@ -149,6 +141,16 @@ app.get('/', (req, res) => {
 app.use((req, res) => {
   res.status(404).sendFile(path.join(__dirname, '..', 'frontend', '404.html'));
 });
+
+// Global error handler — prevent stack traces from leaking
+app.use((err, req, res, next) => {
+  console.error('[error]', err.message);
+  res.status(500).json({ error: 'Internal server error' });
+});
+
+if (!process.env.ADMIN_KEY) {
+  console.warn('WARNING: ADMIN_KEY not set — admin endpoints will be inaccessible.');
+}
 
 const server = app.listen(PORT, () => {
   console.log(`Telix.dev listening on port ${PORT}`);

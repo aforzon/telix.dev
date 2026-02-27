@@ -1,15 +1,35 @@
 const net = require('net');
+const dns = require('dns');
 const { resolveAndValidate } = require('../lib/validate-host');
 
 let db;
 try { db = require('../db'); } catch { /* loaded standalone */ }
 
-function checkHost(host, port, timeout = 5000) {
+// DNS cache to avoid redundant lookups for same host across entries
+const dnsCache = new Map();
+const DNS_TIMEOUT = 5000;
+
+function resolveCached(host) {
+  if (dnsCache.has(host)) return Promise.resolve(dnsCache.get(host));
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`DNS timeout: ${host}`)), DNS_TIMEOUT);
+    resolveAndValidate(host).then((ip) => {
+      clearTimeout(timer);
+      dnsCache.set(host, ip);
+      resolve(ip);
+    }).catch((err) => {
+      clearTimeout(timer);
+      reject(err);
+    });
+  });
+}
+
+function checkHost(host, port, timeout = 8000) {
   return new Promise(async (resolve) => {
     // SSRF protection: validate host before connecting
     let resolvedIP;
     try {
-      resolvedIP = await resolveAndValidate(host);
+      resolvedIP = await resolveCached(host);
     } catch {
       return resolve({ status: 'offline', response_time: null });
     }
@@ -39,21 +59,37 @@ function checkHost(host, port, timeout = 5000) {
   });
 }
 
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
 async function checkBatch(entries, concurrency = 10) {
   const results = [];
-  for (let i = 0; i < entries.length; i += concurrency) {
+  const total = entries.length;
+  for (let i = 0; i < total; i += concurrency) {
     const batch = entries.slice(i, i + concurrency);
     const checks = batch.map(async (entry) => {
       const result = await checkHost(entry.host, entry.port);
       return { id: entry.id, name: entry.name, ...result };
     });
     results.push(...(await Promise.all(checks)));
+    // Progress log every 100 entries
+    if ((i + concurrency) % 100 < concurrency) {
+      const done = Math.min(i + concurrency, total);
+      const onlineSoFar = results.filter(r => r.status === 'online').length;
+      console.log(`  progress: ${done}/${total} checked (${onlineSoFar} online)`);
+    }
+    // Delay between batches to avoid hammering DNS/network
+    if (i + concurrency < total) {
+      await sleep(200);
+    }
   }
   return results;
 }
 
 async function runChecks(database) {
   const d = database || db;
+  // Clear DNS cache at start of each run
+  dnsCache.clear();
+
   const entries = d.prepare('SELECT id, name, host, port, status AS prev_status, flagged FROM entries WHERE flagged < 10').all();
   console.log(`Checking ${entries.length} entries...`);
 
@@ -63,6 +99,9 @@ async function runChecks(database) {
   );
   const incFlag = d.prepare('UPDATE entries SET flagged = flagged + 1 WHERE id = ?');
 
+  // Build a lookup map instead of using .find() in a loop
+  const entryMap = new Map(entries.map(e => [e.id, e]));
+
   const tx = d.transaction(() => {
     for (const r of results) {
       update.run(r.status, r.response_time, r.id);
@@ -70,7 +109,7 @@ async function runChecks(database) {
       // Auto-flag entries that are offline: increment flagged count each check
       // After 5 consecutive offline checks, entry gets hidden (flagged >= 5)
       if (r.status === 'offline') {
-        const entry = entries.find(e => e.id === r.id);
+        const entry = entryMap.get(r.id);
         if (entry && entry.prev_status === 'offline') {
           incFlag.run(r.id);
         }
@@ -80,18 +119,18 @@ async function runChecks(database) {
   tx();
 
   const online = results.filter((r) => r.status === 'online').length;
-  const flagged = results.filter((r) => r.status === 'offline').length;
-  console.log(`Done: ${online}/${results.length} online, ${flagged} offline`);
+  const offline = results.filter((r) => r.status === 'offline').length;
+  console.log(`Done: ${online}/${results.length} online, ${offline} offline`);
   return results;
 }
 
 function startCron(database) {
   const cron = require('node-cron');
-  cron.schedule('0 4 * * *', () => {
-    console.log(`[${new Date().toISOString()}] Running daily status check`);
+  cron.schedule('0 4 * * 0', () => {
+    console.log(`[${new Date().toISOString()}] Running weekly status check`);
     runChecks(database).catch(console.error);
   });
-  console.log('Status checker cron scheduled (daily at 4am)');
+  console.log('Status checker cron scheduled (weekly, Sunday at 4am)');
 }
 
 // CLI mode: node backend/jobs/status-checker.js --once

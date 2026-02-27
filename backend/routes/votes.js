@@ -6,7 +6,7 @@ const router = express.Router();
 // POST /api/votes/:entryId — cast a vote
 router.post('/:entryId', (req, res) => {
   const entryId = parseInt(req.params.entryId);
-  const voterIp = req._realIP || req.ip;
+  const voterIp = req.ip;
 
   const entry = db.prepare('SELECT id FROM entries WHERE id = ? AND flagged = 0').get(entryId);
   if (!entry) return res.status(404).json({ error: 'Entry not found' });
@@ -27,7 +27,7 @@ router.post('/:entryId', (req, res) => {
 router.get('/:entryId/check', (req, res) => {
   const existing = db.prepare(
     'SELECT id FROM votes WHERE entry_id = ? AND voter_ip = ?'
-  ).get(req.params.entryId, req._realIP || req.ip);
+  ).get(req.params.entryId, req.ip);
   res.json({ voted: !!existing });
 });
 

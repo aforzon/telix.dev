@@ -31,6 +31,15 @@ CREATE TABLE IF NOT EXISTS votes (
     UNIQUE(entry_id, voter_ip)
 );
 
+CREATE TABLE IF NOT EXISTS flags (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    entry_id INTEGER NOT NULL,
+    flagger_ip TEXT NOT NULL,
+    flagged_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (entry_id) REFERENCES entries(id),
+    UNIQUE(entry_id, flagger_ip)
+);
+
 CREATE INDEX IF NOT EXISTS idx_entries_category ON entries(category);
 CREATE INDEX IF NOT EXISTS idx_entries_status ON entries(status);
 CREATE INDEX IF NOT EXISTS idx_entries_upvotes ON entries(upvotes DESC);

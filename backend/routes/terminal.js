@@ -5,6 +5,7 @@ const db = require('../db');
 const { resolveAndValidate } = require('../lib/validate-host');
 
 const MAX_PER_IP = 1;
+const MAX_TOTAL_SESSIONS = 50;
 const IDLE_TIMEOUT = 2 * 60 * 1000;   // 2 minutes
 const MAX_SESSION = 20 * 60 * 1000;   // 20 minutes
 const CONNECT_TIMEOUT = 10_000;        // 10 seconds
@@ -17,6 +18,12 @@ function attach(server) {
   const wss = new WebSocket.Server({ noServer: true });
 
   server.on('upgrade', (request, socket, head) => {
+    const origin = request.headers.origin;
+    if (origin && origin !== 'https://telix.dev' && origin !== 'http://localhost:3000') {
+      socket.destroy();
+      return;
+    }
+
     const pathname = new URL(request.url, 'http://localhost').pathname;
     if (pathname !== '/ws/terminal') {
       socket.destroy();
@@ -30,8 +37,15 @@ function attach(server) {
   wss.on('connection', (ws, request) => {
     const params = new URL(request.url, 'http://localhost').searchParams;
     const entryId = parseInt(params.get('id'));
-    const ip = request.headers['cf-connecting-ip']
-      || request.socket.remoteAddress;
+    const ip = request.headers['x-forwarded-for']
+      ? request.headers['x-forwarded-for'].split(',')[0].trim()
+      : request.socket.remoteAddress;
+
+    // Global session cap
+    if (activeSessions.length >= MAX_TOTAL_SESSIONS) {
+      ws.close(4503, 'Server at capacity. Try again later.');
+      return;
+    }
 
     // Connection limit per IP
     const count = ipConnections.get(ip) || 0;

@@ -280,7 +280,7 @@ const Phonebook = {
       const sep = ' <span class="col-sep">|</span> ';
       const row = `<span class="entry-status ${statusClass}"> ${statusIcon}</span> ${sep}${nameHtml}<span class="col-proto">${sep}${App.esc(App.pad(entry.protocol, 8))}</span><span class="col-cat">${sep}${App.esc(App.pad(catLabel, 12))}</span>${sep}<span class="col-votes">${App.esc(String(entry.upvotes || 0))}</span>`;
 
-      return `<div class="entry-row${selected ? ' selected' : ''}${isOffline ? ' entry-offline' : ''}" role="option" aria-selected="${selected}" data-index="${i}" tabindex="${selected ? '0' : '-1'}" aria-label="${App.esc(entry.name)}, ${entry.status || 'unknown'}, ${App.esc(entry.protocol)}, ${App.esc(entry.host)}:${entry.port}">${row}</div>`;
+      return `<div class="entry-row${selected ? ' selected' : ''}${isOffline ? ' entry-offline' : ''}" role="option" aria-selected="${selected}" data-index="${i}" tabindex="${selected ? '0' : '-1'}" aria-label="${App.esc(entry.name)}, ${entry.status || 'unknown'}, ${App.esc(entry.protocol)}, ${App.esc(entry.host)}:${App.esc(String(entry.port))}">${row}</div>`;
     }).join('');
 
     // Click handlers

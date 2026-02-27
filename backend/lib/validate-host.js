@@ -13,6 +13,10 @@ const BLOCKED_CIDRS = [
   }},
   { prefix: '192.168.', label: 'private (192.168.x)' },
   { prefix: '169.254.', label: 'link-local' },
+  { prefix: '100.64.', label: 'CGNAT' },
+  { prefix: '198.18.', label: 'benchmark' },
+  { prefix: '198.19.', label: 'benchmark' },
+  { prefix: '192.0.0.', label: 'IETF protocol' },
   // IPv6
   { prefix: '::1', label: 'loopback (IPv6)' },
   { prefix: 'fc', label: 'private (IPv6 fc)' },
@@ -25,6 +29,7 @@ const BLOCKED_HOSTNAMES = ['localhost', 'metadata.google.internal'];
 function isBlockedIP(ip) {
   if (!ip) return true;
   const normalized = ip.toLowerCase().replace(/^::ffff:/, '');
+  if (normalized === '::' || normalized === '0.0.0.0') return true;
   for (const rule of BLOCKED_CIDRS) {
     if (rule.prefix && normalized.startsWith(rule.prefix)) return true;
     if (rule.test && rule.test(normalized)) return true;

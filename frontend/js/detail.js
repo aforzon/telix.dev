@@ -45,7 +45,7 @@ const Detail = {
       </div>
       <div class="detail-field">
         <span class="detail-label">Host: </span>
-        <span class="detail-value">${App.esc(entry.host)}:${entry.port}</span>
+        <span class="detail-value">${App.esc(entry.host)}:${App.esc(String(entry.port))}</span>
       </div>
       <div class="detail-field">
         <span class="detail-label">Category: </span>
@@ -77,7 +77,7 @@ const Detail = {
       <p> </p>
       <div class="form-actions">
         ${TerminalView.canConnect(entry) ? '<button type="button" class="btn btn-connect" id="detail-connect" aria-label="Connect in browser terminal">> Connect</button>' : ''}
-        ${entry.protocol === 'gopher' ? '<a href="https://gopher.tildeverse.org//' + App.esc(entry.host) + '/' + (entry.port !== 70 ? ':' + entry.port : '') + '" target="_blank" rel="noopener" class="btn btn-connect" aria-label="Browse via Gopher proxy">> Browse</a>' : ''}
+        ${entry.protocol === 'gopher' ? '<a href="https://gopher.tildeverse.org//' + App.esc(entry.host) + '/' + (parseInt(entry.port, 10) !== 70 ? ':' + parseInt(entry.port, 10) : '') + '" target="_blank" rel="noopener" class="btn btn-connect" aria-label="Browse via Gopher proxy">> Browse</a>' : ''}
         <button type="button" class="upvote-btn btn" id="detail-upvote" aria-label="Upvote this entry">^Upvote (${entry.upvotes || 0})</button>
         <button type="button" class="btn" id="detail-share" aria-label="Share this entry">Share</button>
         <button type="button" class="btn btn-danger" id="detail-flag" aria-label="Report this entry">Report</button>

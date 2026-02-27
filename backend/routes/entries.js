@@ -55,7 +55,7 @@ router.get('/', (req, res) => {
   }
   if (search && search.trim()) {
     where.push('(name LIKE @search OR description LIKE @search OR tags LIKE @search OR host LIKE @search)');
-    params.search = `%${search.trim()}%`;
+    params.search = `%${search.trim().replace(/[%_]/g, '')}%`;
   }
 
   let orderBy = 'submitted_at DESC';
@@ -99,10 +99,18 @@ const verifyTurnstile = require('../middleware/turnstile');
 const { checkHost } = require('../jobs/status-checker');
 const submitTracker = new Map(); // ip -> timestamp of last submission
 
+// Clean up expired submit rate-limit entries every 5 minutes
+setInterval(() => {
+  const cutoff = Date.now() - 300_000;
+  for (const [key, ts] of submitTracker) {
+    if (ts < cutoff) submitTracker.delete(key);
+  }
+}, 300_000);
+
 router.post('/', verifyTurnstile, async (req, res) => {
   // Rate limit: 1 submission per IP per 5 minutes
   const now = Date.now();
-  const ip = req._realIP || req.ip;
+  const ip = req.ip;
   const lastSubmit = submitTracker.get(ip);
   if (lastSubmit && now - lastSubmit < 300_000) {
     return res.status(429).json({ error: 'Please wait a few minutes before submitting again.' });
@@ -153,20 +161,19 @@ router.post('/', verifyTurnstile, async (req, res) => {
   res.json({ ok: true, id: result.lastInsertRowid, message: 'Submitted! Your entry is pending review.' });
 });
 
-// POST /api/entries/:id/flag (one flag per IP per entry)
-const flagTracker = new Map(); // ip:entryId -> timestamp
-
+// POST /api/entries/:id/flag (one flag per IP per entry, persisted in DB)
 router.post('/:id/flag', (req, res) => {
-  const entry = db.prepare('SELECT id FROM entries WHERE id = ?').get(req.params.id);
+  const entryId = parseInt(req.params.id);
+  const entry = db.prepare('SELECT id FROM entries WHERE id = ?').get(entryId);
   if (!entry) return res.status(404).json({ error: 'Entry not found' });
 
-  const flagKey = (req._realIP || req.ip) + ':' + req.params.id;
-  if (flagTracker.has(flagKey)) {
-    return res.status(409).json({ error: 'Already flagged' });
-  }
-  flagTracker.set(flagKey, Date.now());
+  const existingFlag = db.prepare(
+    'SELECT id FROM flags WHERE entry_id = ? AND flagger_ip = ?'
+  ).get(entryId, req.ip);
+  if (existingFlag) return res.status(409).json({ error: 'Already flagged' });
 
-  db.prepare('UPDATE entries SET flagged = flagged + 1 WHERE id = ?').run(req.params.id);
+  db.prepare('INSERT INTO flags (entry_id, flagger_ip) VALUES (?, ?)').run(entryId, req.ip);
+  db.prepare('UPDATE entries SET flagged = flagged + 1 WHERE id = ?').run(entryId);
   res.json({ ok: true });
 });
 

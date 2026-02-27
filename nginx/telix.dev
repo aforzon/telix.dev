@@ -42,6 +42,7 @@ server {
 
     # Block sensitive paths
     location ~ /\.env { deny all; return 404; }
+    location ~ /CLAUDE\.md { deny all; return 404; }
     location ~ /node_modules/ { deny all; return 404; }
     location ~ /package\.json { deny all; return 404; }
     location ~ /backend/ { deny all; return 404; }
@@ -64,6 +65,16 @@ server {
         include snippets/security-headers-telix.conf;
         add_header Cache-Control "public, max-age=31536000, immutable" always;
         access_log off;
+    }
+
+    # WebSocket terminal proxy
+    location /ws/terminal {
+        proxy_pass http://telix_backend;
+        include snippets/proxy-params.conf;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_read_timeout 1200s;
     }
 
     # API proxy
